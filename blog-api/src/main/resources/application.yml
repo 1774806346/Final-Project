@@ -1,0 +1,90 @@
+server:
+  port: 8089
+  website:
+    url: http://localhost:4569/
+  max-http-header-size: 16KB
+file-save-path: D:/blogimg
+
+spring:
+  datasource:
+    username: root
+    password:
+    url: jdbc:mysql://127.0.0.1:3306/blog?serverTimezone=GMT%2B8&characterEncoding=UTF-8&useUnicode=true&useOldAliasMetadataBehavior=true&useSSL=false
+    driver-class-name: com.mysql.jdbc.Driver
+    type: com.alibaba.druid.pool.DruidDataSource
+    initialSize: 5
+    minIdle: 5
+    maxActive: 20
+    maxWait: 60000
+    timeBetweenEvictionRunsMillis: 60000
+    minEvictableIdleTimeMillis: 300000
+    validationQuery: SELECT 1 FROM DUAL
+    testWhileIdle: false
+    testOnBorrow: false
+    testOnReturn: false
+    poolPreparedStatements: true
+    stat-view-servlet:
+      enabled: false
+    web-stat-filter:
+      enabled: false
+    filter:
+      config:
+        enabled: false
+
+    filters: stat,log4j2,wall
+    maxPoolPreparedStatementPerConnectionSize: 20
+    useGlobalDataSourceStat: true
+    connectionProperties: druid.stat.mergeSql=true;druid.stat.slowSqlMillis=500
+    connectionInitSqls : set names utf8mb4
+  redis:
+    host: 106.55.27.43
+    port: 6379
+    timeout: 20000
+    password: azhou
+  mail:
+    host: smtp.qq.com
+    username: 1192704429@qq.com
+    password: gnjxydcamncijdaj
+    properties:
+      mail:
+        smtp:
+          ssl:
+            enable: true
+
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.datealive.pojo
+
+shiro-redis:
+  enabled: true
+  redis-manager:
+    host: 106.55.27.43:6379
+    password: azhou
+
+datealive:
+  jwt:
+
+    secret: zrf5201314348f86b67cde581c0f9e11
+
+    expire: 604800
+    header: token
+  gitee:
+
+    ACCESS_TOKEN: 8ade7e71eaa9bd61f9eccedfe0fbb821
+    OWNER: JIA
+    REPO_NAME: images
+
+pagehelper:
+  helperDialect: mysql
+  reasonable: true
+  supportMethodsArguments: true
+  params: count=countSql
+
+imgServerUrl: http://localhost:8092/zhou/
+
+imgRealUrl: F:\\blog\\software\\tomcat-8.5-win64\\apache-tomcat-8.5.68\\webapps
+
+logging:
+  level:
+    com.datealive.mapper: debug

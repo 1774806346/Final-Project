@@ -1,0 +1,388 @@
+<template>
+    <div>
+        <div class="crumbs">
+            <el-breadcrumb separator="/">
+                <el-breadcrumb-item> <i class="el-icon-lx-calendar"></i> Blog </el-breadcrumb-item>
+                <el-breadcrumb-item>Write the article</el-breadcrumb-item>
+            </el-breadcrumb>
+        </div>
+        <div class="container">
+            <el-form ref="form" :model="blogDetail" label-width="80px">
+                <el-row :gutter="20">
+                    <el-col :span="12">
+                        <el-form-item label="The article title">
+                            <el-input v-model="blogDetail.blog_title" style="width: 400px"></el-input>
+                        </el-form-item>
+                        <el-form-item label="The article illustrated">
+                            <el-input v-model="blogDetail.blog_cover_image" style="width: 400px; padding-bottom: 20px"></el-input>
+                            <!-- <el-upload
+                                class="upload-demo"
+                                ref="upload"
+                                action="string"
+                                accept="image/jpeg, image/png, image/jpg"
+                                list-type="picture-card"
+                                :before-upload="onBeforeUploadImage"
+                                :http-request="UploadImage"
+                                :on-change="fileChange"
+                                :file-list="fileList"
+                                :limit="1"
+                            >
+                                <el-button size="small" type="primary"></el-button>
+                                <div slot="tip" class="el-upload__tip"></div>
+                            </el-upload> -->
+                        </el-form-item>
+                        <el-form-item label="Content in this paper,">
+                            <el-input v-model="blogDetail.blog_summary" type="textarea" :rows="2" style="width: 400px"></el-input>
+                        </el-form-item>
+                        <el-form-item label="Release time" style="width: 400px">
+                            <el-col :span="11">
+                                <el-date-picker
+                                    type="datetime"
+                                    value-format="yyyy-MM-dd HH:mm:ss"
+                                    placeholder="Select a date"
+                                    v-model="blogDetail.create_time"
+                                    style="width: 100%"
+                                ></el-date-picker>
+                            </el-col>
+                        </el-form-item>
+                        <el-form-item label="Is placed at the top?">
+                            <el-switch v-model="blogDetail.is_top" :active-value="1" :inactive-value="0" active-color="#13ce66"></el-switch>
+                        </el-form-item>
+                        <el-form-item label="The article label">
+                            <el-tag
+                                :key="tag.tag_id"
+                                v-for="tag in tagsList"
+                                closable
+                                :disable-transitions="false"
+                                @close="handleCloseTag(tag)"
+                                >{{ tag.tag_name }}</el-tag
+                            >
+                            <el-input
+                                class="input-new-tag"
+                                v-if="inputVisibleTag"
+                                v-model="inputValueTag"
+                                ref="saveTagInputTag"
+                                size="small"
+                                @keyup.enter.native="handleInputConfirmTag"
+                                @blur="handleInputConfirmTag"
+                            ></el-input>
+                            <el-button v-else class="button-new-tag" size="small" @click="showInputTag">+ New Tag</el-button>
+                        </el-form-item>
+                        <el-form-item label="The article directories">
+                            <el-tag
+                                :key="category.category_id"
+                                v-for="category in categorys"
+                                closable
+                                :disable-transitions="false"
+                                @close="handleCloseCategory(category)"
+                                >{{ category.category_name }}</el-tag
+                            >
+                            <el-input
+                                class="input-new-tag"
+                                v-if="inputVisibleCategory"
+                                v-model="inputValueCategory"
+                                ref="saveInputCategory"
+                                size="small"
+                                @keyup.enter.native="handleInputConfirmCategory"
+                                @blur="handleInputConfirmCategory"
+                            ></el-input>
+                            <el-button v-else class="button-new-tag" size="small" @click="showInputCategory">+ New Category</el-button>
+                        </el-form-item>
+                    </el-col>
+                </el-row>
+                <mavon-editor
+                    v-model="content"
+                    ref="md"
+                    @imgAdd="$imgAdd"
+                    @change="change"
+                    style="min-height: 600px"
+                    :ishljs="true"
+                    codeStyle="atom-one-dark"
+                />
+                <el-form-item size="large">
+                    <el-button class="editor-btn" type="primary" @click="release">Published articles</el-button>
+                    <el-button class="editor-btn" type="primary" @click="saveblog">Save drafts</el-button>
+                    <el-button class="editor-btn" type="info" @click="$router.back(-1)">cancel</el-button>
+                </el-form-item>
+            </el-form>
+        </div>
+    </div>
+</template>
+
+<script>
+import { mavonEditor } from 'mavon-editor';
+import 'mavon-editor/dist/css/index.css';
+var token = localStorage.getItem('token');
+export default {
+    name: 'markdown',
+    data: function () {
+        return {
+            configs: {},
+            content: '',
+            blogDetail: {
+                blog_id: null,
+                blog_title: '',
+                blog_cover_image: '',
+                blog_content: '',
+                blog_summary: '',
+                blog_status: 0,
+                create_time: '',
+                update_time: '',
+                is_top: 0,
+                cateGory: [],
+                tags: []
+            },
+            inputVisibleTag: false,
+            inputValueTag: '',
+            inputVisibleCategory: false,
+            inputValueCategory: '',
+            categorys: [],
+            tagsList: [],
+            fileList: [],
+            logo: ''
+        };
+    },
+    components: {
+        mavonEditor
+    },
+    created: function () {
+        if (this.$route.query.blog_id) {
+            this.getData();
+        }
+    },
+    methods: {
+
+        $imgAdd(pos, $file) {
+
+            const _this = this;
+            var formdata = new FormData();
+            formdata.append('file', $file);
+            _this.$axios
+                .post('/admin/uploadImgtoGitee', formdata, {
+                    headers: {
+                        Authorization: localStorage.getItem('token')
+                    }
+                })
+                .then((res) => {
+                    this.$refs.md.$img2Url(pos, res.data.data);
+                    this.$message.success(res.data.msg);
+                })
+                .catch((err) => {
+                    this.$message.error('No access');
+                });
+        },
+        change(value, render) {
+
+        },
+        release() {
+            const _this = this;
+            _this.blogDetail.tags = _this.tagsList;
+            _this.blogDetail.blog_content = _this.content;
+            _this.blogDetail.cateGory = _this.categorys;
+            _this.blogDetail.blog_status = 0;
+            this.$axios
+                .post('/admin/saveBlog', _this.blogDetail, {
+                    headers: {
+                        Authorization: localStorage.getItem('token')
+                    }
+                })
+                .then((res) => {
+                    if (res.data.code == 200) {
+                        this.$message.success(res.data.msg);
+                    } else {
+                        this.$message.error(res.data.msg);
+                    }
+                })
+                .catch((err) => {
+                    this.$message.error('Don\'t try again. There\'s no access');
+                });
+        },
+        saveblog() {
+            const _this = this;
+            _this.blogDetail.tags = _this.tagsList;
+            _this.blogDetail.blog_content = _this.content;
+            _this.blogDetail.cateGory = _this.categorys;
+            _this.blogDetail.blog_status = 1;
+            this.$axios
+                .post('/admin/saveBlog', _this.blogDetail, {
+                    headers: {
+                        Authorization: localStorage.getItem('token')
+                    }
+                })
+                .then((res) => {
+                    if (res.data.code == 200) {
+                        this.$message.success(res.data.msg);
+                    } else {
+                        this.$message.error(res.data.msg);
+                    }
+                })
+                .catch((err) => {
+                    this.$message.error('Don\'t try again. There\'s no access');
+                });
+        },
+        handleCloseTag(tag) {
+            this.tagsList.splice(this.tagsList.indexOf(tag), 1);
+        },
+        showInputTag() {
+            this.inputVisibleTag = true;
+            this.$nextTick((_) => {
+                this.$refs.saveTagInputTag.$refs.input.focus();
+            });
+        },
+        handleInputConfirmTag() {
+            const _this = this;
+            let tag_name = this.inputValueTag;
+            let data = {
+                tag_name
+            };
+            if (tag_name) {
+
+                this.$axios.get('/getTagByName/' + tag_name).then((res) => {
+                    if (res.data.code === 200) {
+                        _this.tagsList.push(res.data.data);
+                        this.$message.success('Adding a label Succeeded');
+                    } else {
+                        _this.$axios
+                            .post('/admin/saveTag', data, {
+                                headers: {
+                                    Authorization: localStorage.getItem('token')
+                                }
+                            })
+                            .then((res) => {
+                                let newTag = {
+                                    tag_id: res.data.data,
+                                    tag_name: tag_name
+                                };
+                                _this.tagsList.push(newTag);
+                                this.$message.success('Adding a label Succeeded');
+                            })
+                            .catch((err) => {
+                                this.$message.error('Don\'t try again. There\'s no access');
+                            });
+                    }
+                });
+            }
+            this.inputVisibleTag = false;
+            this.inputValueTag = '';
+        },
+        handleCloseCategory(category) {
+            this.categorys.splice(this.categorys.indexOf(category), 1);
+        },
+        showInputCategory() {
+            this.inputVisibleCategory = true;
+            this.$nextTick((_) => {
+                this.$refs.saveInputCategory.$refs.input.focus();
+            });
+        },
+        handleInputConfirmCategory() {
+            const _this = this;
+            let category_name = this.inputValueCategory;
+            let data = {
+                category_name
+            };
+            if (category_name) {
+
+                this.$axios.get('/getCateGoryByName/' + category_name).then((res) => {
+                    if (res.data.code === 200) {
+                        _this.categorys.push(res.data.data);
+                        this.$message.success('Succeeded in adding a category');
+                    } else {
+                        _this.$axios
+                            .post('/admin/saveCategory', data, {
+                                headers: {
+                                    Authorization: localStorage.getItem('token')
+                                }
+                            })
+                            .then((res) => {
+                                let newCategory = {
+                                    category_id: res.data.data,
+                                    category_name: category_name
+                                };
+                                _this.categorys.push(newCategory);
+                                this.$message.success('Succeeded in adding a category');
+                            })
+                            .catch((err) => {
+                                this.$message.error('Don\'t try again. There\'s no access');
+                            });
+                    }
+                });
+            }
+            this.inputVisibleCategory = false;
+            this.inputValueCategory = '';
+        },
+        getData() {
+            const _this = this;
+            const blog_id = this.$route.query.blog_id;
+            this.$axios
+                .get('/admin/blog/' + parseInt(blog_id), {
+                    headers: {
+                        Authorization: localStorage.getItem('token')
+                    }
+                })
+                .then((res) => {
+                    _this.blogDetail = res.data.data;
+                    _this.content = res.data.data.blog_content;
+                    _this.tagsList = res.data.data.tags;
+                    _this.categorys = res.data.data.cateGory;
+                });
+        },
+        onBeforeUploadImage(file) {
+            const isIMAGE = file.type === 'image/jpeg' || 'image/jpg' || 'image/png';
+            const isLt1M = file.size / 1024 / 1024 < 5;
+            if (!isIMAGE) {
+                this.$message.error('Upload files can only be in image format!');
+            }
+            if (!isLt1M) {
+                this.$message.error('The size of the uploaded file cannot exceed 5MB!');
+            }
+            return isIMAGE && isLt1M;
+        },
+        UploadImage(param) {
+            const formData = new FormData();
+            formData.append('file', param.file);
+            this.$axios
+                .post('/admin/uploadImgtoGitee', formData, {
+                    headers: {
+                        Authorization: localStorage.getItem('token')
+                    }
+                })
+                .then((res) => {
+                    consoel.log(res)
+                    this.$message.success(res.data.msg);
+                    this.blogDetail.blog_cover_image = res.data.data;
+                    param.onSuccess();
+
+                })
+                .catch((err) => {
+                    this.$message.error('Upload failed');
+                    param.onError();
+                });
+        },
+        fileChange(file) {
+            this.$refs.upload.clearFiles();
+            this.logo = file.raw;
+            this.fileList = [{ name: file.name, url: file.url }];
+        }
+    }
+};
+</script>
+<style scoped>
+.editor-btn {
+    margin-top: 20px;
+}
+.el-tag + .el-tag {
+    margin-left: 10px;
+}
+.button-new-tag {
+    margin-left: 10px;
+    height: 32px;
+    line-height: 30px;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+.input-new-tag {
+    width: 90px;
+    margin-left: 10px;
+    vertical-align: bottom;
+}
+</style>
